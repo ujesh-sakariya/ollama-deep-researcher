@@ -12,6 +12,21 @@ from assistant.utils import deduplicate_and_format_sources, tavily_search, forma
 from assistant.state import SummaryState, SummaryStateInput, SummaryStateOutput
 from assistant.prompts import query_writer_instructions, summarizer_instructions, reflection_instructions
 
+
+from pdf_retriever import retriever as pdf_retriever
+
+def local_rag_search(state: SummaryState, config: RunnableConfig):
+    """Search using local PDF RAG retriever"""
+    query = state.search_query
+    docs = pdf_retriever.get_relevant_documents(query)
+    content = "\n\n".join([doc.page_content for doc in docs])
+    return {
+        "sources_gathered": [content],
+        "research_loop_count": state.research_loop_count + 1,
+        "web_research_results": [content],
+    }
+
+
 # Nodes
 def generate_query(state: SummaryState, config: RunnableConfig):
     """ Generate a query for web search """
@@ -136,7 +151,9 @@ def route_research(state: SummaryState, config: RunnableConfig) -> Literal["fina
     """ Route the research based on the follow-up query """
 
     configurable = Configuration.from_runnable_config(config)
-    if state.research_loop_count <= int(configurable.max_web_research_loops):
+    if state.research_loop_count % 2 == 0:
+        return "local_rag_search"
+    elif state.research_loop_count <= int(configurable.max_web_research_loops):
         return "web_research"
     else:
         return "finalize_summary"
@@ -145,6 +162,7 @@ def route_research(state: SummaryState, config: RunnableConfig) -> Literal["fina
 builder = StateGraph(SummaryState, input=SummaryStateInput, output=SummaryStateOutput, config_schema=Configuration)
 builder.add_node("generate_query", generate_query)
 builder.add_node("web_research", web_research)
+builder.add_node("local_rag_search", local_rag_search)
 builder.add_node("summarize_sources", summarize_sources)
 builder.add_node("reflect_on_summary", reflect_on_summary)
 builder.add_node("finalize_summary", finalize_summary)

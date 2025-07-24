@@ -10,11 +10,12 @@ license = { text = "MIT" }
 requires-python = ">=3.9"
 dependencies = [
     "langgraph>=0.2.55",
-    "langchain-community>=0.3.9",
+    "langchain-community>=0.3.27",
     "tavily-python>=0.5.0",
     "langchain-ollama>=0.2.1",
     "duckduckgo-search>=7.3.0",
     "beautifulsoup4>=4.13.3",
+    "langchain-chroma"
 ]
 
 [project.optional-dependencies]
